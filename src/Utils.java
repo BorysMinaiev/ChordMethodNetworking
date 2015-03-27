@@ -1,14 +1,10 @@
 /**
  * Created by Borys Minaiev on 26.03.2015.
  */
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.Enumeration;
 
 public class Utils {
@@ -40,6 +36,55 @@ public class Utils {
         return null;
     }
 
+    public static InetAddress readIPFromStream(InputStream stream) throws IOException {
+        byte[] ip = new byte[4];
+        for (int i = 0; i < ip.length; i++) {
+            ip[i] = (byte) stream.read();
+        }
+        return InetAddress.getByAddress(ip);
+    }
+
+    public static InetAddress sendFindSuccessorRequest(InetAddress addr, int sha1) throws IOException {
+//        System.err.println("ask succ for sha1 = " + sha1);
+        Socket sendSocket = new Socket(addr, Settings.PORT);
+        OutputStream out = sendSocket.getOutputStream();
+        out.write(Codes.FIND_SUCCESSOR);
+        for (int i = 0; i < 4; i++) {
+            int what = (sha1 >> ((3 - i) * 8)) & 255;
+            out.write(what);
+        }
+        InputStream input = sendSocket.getInputStream();
+        int res = input.read();
+        if (res != Codes.OK) {
+//            System.err.println("failed to get succ");
+            return null;
+        }
+        InetAddress result = Utils.readIPFromStream(input);
+        sendSocket.close();
+//        System.err.println("send result -> " + Utils.ipToString(result.getAddress()));
+        return result;
+    }
+
+    public static void sendNotify(InetAddress addr, Info info) throws IOException {
+//        System.err.println("send notify to = " + ipToString(addr.getAddress()));
+        Socket sendSocket = new Socket(addr, Settings.PORT);
+        OutputStream out = sendSocket.getOutputStream();
+        out.write(Codes.NOTIFY);
+        for (int i = 0; i < info.myIp.length; i++) {
+            out.write(info.myIp[i]);
+        }
+        sendSocket.close();
+    }
+
+
+    // is value in [from; to) ?
+    public static boolean insideInterval(int from, int to, int value) {
+        if (from < to) {
+            return value >= from && value < to;
+        }
+        return value >= from || value < to;
+    }
+
     static String ipToString(byte[] ip) {
         try {
             return InetAddress.getByAddress(ip).toString().split("/")[1];
@@ -49,34 +94,39 @@ public class Utils {
         return null;
     }
 
-    byte[] sha1(byte[] bytes) {
+    static int sha1(byte[] bytes) {
         try {
             MessageDigest md;
             md = MessageDigest.getInstance("SHA-1");
             md.update(bytes);
             byte[] sha1hash = md.digest();
-            final int countBytes = 4;
-            byte[] res = new byte[countBytes];
-            for (int i = 0; i < countBytes; i++)
-                res[i] = sha1hash[sha1hash.length - countBytes + i];
+            final int COUNT_BYTES = 4;
+            int res = 0;
+            for (int i = 0; i < COUNT_BYTES; i++) {
+                int tmp = sha1hash[sha1hash.length - COUNT_BYTES + i];
+                if (tmp < 0) {
+                    tmp += 1 << 8;
+                }
+                res = (res << 8) | tmp;
+            }
             return res;
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-        return new byte[0];
+        return 0;
     }
 
-    byte[] sha1(InetAddress addr) {
+    int sha1(InetAddress addr) {
         return sha1(addr.getAddress());
     }
 
-    byte[] sha1(String s) {
+    int sha1(String s) {
         try {
             return sha1(s.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-        return new byte[0];
+        return 0;
     }
 
     public interface PacketGenerator {

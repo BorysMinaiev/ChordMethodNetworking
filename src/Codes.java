@@ -2,6 +2,7 @@
  * Created by antonkov on 26.03.15.
  */
 public class Codes {
+    public static final int OK = 0x0;
     public static final int FIND_SUCCESSOR = 0x1;
     public static final int GET_PREDECESSOR = 0x2;
     public static final int NOTIFY = 0x3;
@@ -16,4 +17,5 @@ public class Codes {
     public static final int DELETE_ENTRY = 0xD;
     public static final int DELETE_FROM_BACKUP = 0xE;
     public static final int KEEP_ALIVE = 0xF;
+    public static final int FAIL = 0xFF;
 }

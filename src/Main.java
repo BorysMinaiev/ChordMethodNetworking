@@ -1,6 +1,4 @@
 import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.Socket;
 import java.net.SocketException;
 
 /**
@@ -16,6 +14,10 @@ public class Main {
             new Thread(new UdpReceiver(socket, info)).start();
             new Thread(new UdpSender(socket, info)).start();
             new Thread(new TcpReceiver(info)).start();
+            new Thread(new KeepAliveSender(socket, info)).start();
+            new Thread(new KeepAliveChecker(info)).start();
+            new Thread(new Stabilizer(info)).start();
+            new Thread(new FingerStabilizer(info)).start();
         } catch (SocketException e) {
             e.printStackTrace();
         }
