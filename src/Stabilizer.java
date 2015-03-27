@@ -3,6 +3,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 
 /**
@@ -45,20 +46,37 @@ public class Stabilizer implements Runnable {
 
             if (!Arrays.equals(info.fingerTable[0].getAddress(), info.myIp)) {
                 InetAddress x = null;
+                System.err.println("!!!%%%");
                 try {
+                    System.err.println("try to send prev req " + info.fingerTable[0]);
                     x = sendPrevRequest(info.fingerTable[0]);
-                    if (Utils.insideInterval(Utils.sha1(info.myIp), Utils.sha1(info.succ), Utils.sha1(x.getAddress()))) {
+                    System.err.println("resp = prev = " + Utils.ipToString(x.getAddress()));
+                    if (Utils.insideInterval(Utils.sha1(info.myIp), Utils.sha1(info.succ), Utils.sha1(x.getAddress())) && !Arrays.equals(info.myIp, x.getAddress())) {
+                        System.err.println("!!!");
                         info.fingerTable[0] = x;
                         info.succ = x.getAddress();
+                        System.err.println(" in stabilizer " + Utils.ipToString(info.succ));
+                        System.err.println("ask for succ");
                         info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
+                        System.err.println("received response");
                         Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+            } else {
+                info.succ = info.prev;
+                try {
+                    info.fingerTable[0] = InetAddress.getByAddress(info.succ);
+                } catch (UnknownHostException e) {
+                    e.printStackTrace();
+                }
             }
+            System.err.println("12312321");
             try {
+                System.err.println("!!!");
                 Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
+                System.err.println("???");
             } catch (IOException e) {
                 e.printStackTrace();
             }

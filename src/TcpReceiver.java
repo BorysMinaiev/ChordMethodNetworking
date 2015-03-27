@@ -16,10 +16,10 @@ public class TcpReceiver implements Runnable {
         this.info = info;
     }
 
-    class EventHandler implements Runnable {
+    class ResponseManager implements Runnable {
         Socket socket;
 
-        public EventHandler(Socket socket) {
+        public ResponseManager(Socket socket) {
             this.socket = socket;
         }
 
@@ -56,15 +56,20 @@ public class TcpReceiver implements Runnable {
         }
 
 
+
+
         private void findSuccessor(InputStream input, OutputStream output) throws IOException {
-            int sha1 = Utils.sha1(Utils.readIPFromStream(input).getAddress());
+            int sha1 = Utils.intFromBytes(Utils.readIPFromStream(input).getAddress());
+            System.err.println("ask next for sha1 = " + sha1);
             if (Utils.insideInterval(Utils.sha1(info.prev), Utils.sha1(info.myIp), sha1)) {
                 output.write(Codes.OK);
                 output.write(info.myIp);
+                System.err.println("result = myIp");
                 return;
             }
             for (int i = info.fingerTable.length - 1; i >= 0; i--) {
-                if (Utils.insideInterval(Utils.sha1(info.myIp), sha1, Utils.sha1(info.fingerTable[i].getAddress()))) {
+                if (Utils.insideInterval(Utils.sha1(info.myIp), sha1, Utils.sha1(info.fingerTable[i].getAddress()))
+                        && !Arrays.equals(info.myIp, info.fingerTable[i].getAddress())) {
                     InetAddress res = Utils.sendFindSuccessorRequest(info.fingerTable[i], sha1);
                     if (res == null) {
                         output.write(Codes.FAIL);
@@ -72,8 +77,13 @@ public class TcpReceiver implements Runnable {
                     }
                     output.write(Codes.OK);
                     output.write(res.getAddress());
+                    System.err.println("result  = " + Utils.ipToString(res.getAddress()));
                     return;
                 }
+            }
+            if (Arrays.equals(info.myIp, info.succ)) {
+                output.write(Codes.FAIL);
+                return;
             }
             InetAddress res = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), sha1);
             if (res == null) {
@@ -82,6 +92,7 @@ public class TcpReceiver implements Runnable {
             }
             output.write(Codes.OK);
             output.write(res.getAddress());
+            System.err.println("result = " + Utils.ipToString(res.getAddress()));
             return;
         }
 
@@ -114,7 +125,7 @@ public class TcpReceiver implements Runnable {
         try {
             ServerSocket server = new ServerSocket(Settings.PORT);
             while (true) {
-                new Thread(new EventHandler(server.accept())).start();
+                new Thread(new ResponseManager(server.accept())).start();
             }
         } catch (IOException e) {
             e.printStackTrace();

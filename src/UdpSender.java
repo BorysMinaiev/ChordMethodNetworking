@@ -36,7 +36,7 @@ public class UdpSender implements Runnable {
                 e2.printStackTrace();
             }
             try {
-                if (Arrays.equals(info.succ, info.myIp)) {
+                if (Arrays.equals(info.succ, info.myIp) && Arrays.equals(info.prev, info.myIp)) {
                     System.err.println("send init");
                     socket.send(packet);
                 }

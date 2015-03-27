@@ -65,8 +65,20 @@ public class Utils {
         return result;
     }
 
+    public static int intFromBytes(byte[] bytes) {
+        int res = 0;
+        for (int i = 0; i < bytes.length; i++) {
+            int tmp = bytes[i];
+            if (tmp < 0) {
+                tmp += 256;
+            }
+            res = (res << 8) | tmp;
+        }
+        return res;
+    }
+
     public static void sendNotify(InetAddress addr, Info info) throws IOException {
-//        System.err.println("send notify to = " + ipToString(addr.getAddress()));
+        System.err.println("send notify to = " + ipToString(addr.getAddress()));
         Socket sendSocket = new Socket(addr, Settings.PORT);
         OutputStream out = sendSocket.getOutputStream();
         out.write(Codes.NOTIFY);
@@ -87,7 +99,7 @@ public class Utils {
 
     static String ipToString(byte[] ip) {
         try {
-            return InetAddress.getByAddress(ip).toString().split("/")[1];
+            return InetAddress.getByAddress(ip).toString().split("/")[1] + ", sha1 = " + Utils.sha1(ip);
         } catch (UnknownHostException e) {
             e.printStackTrace();
         }
