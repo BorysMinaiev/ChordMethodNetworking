@@ -37,11 +37,13 @@ public class UdpSender implements Runnable {
             }
             try {
                 if (Arrays.equals(info.succ, info.myIp) && Arrays.equals(info.prev, info.myIp)) {
-                    System.err.println("send init");
+                    if (Settings.DEBUG) {
+                        System.err.println("send init");
+                    }
                     socket.send(packet);
                 }
             } catch (IOException e1) {
-                System.out.println("error sending a message");
+
             }
             try {
                 Thread.sleep(Settings.SEND_INTERVAL);

@@ -1,3 +1,4 @@
+import javax.rmi.CORBA.Util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -60,16 +61,24 @@ public class TcpReceiver implements Runnable {
 
         private void findSuccessor(InputStream input, OutputStream output) throws IOException {
             int sha1 = Utils.intFromBytes(Utils.readIPFromStream(input).getAddress());
-            System.err.println("ask next for sha1 = " + sha1);
+            if (Settings.DEBUG) {
+                System.err.println("ask next for sha1 = " + sha1);
+                System.err.println("cur prev = " + Utils.ipToString(info.prev));
+            }
             if (Utils.insideInterval(Utils.sha1(info.prev), Utils.sha1(info.myIp), sha1)) {
                 output.write(Codes.OK);
                 output.write(info.myIp);
-                System.err.println("result = myIp");
+                if (Settings.DEBUG) {
+                    System.err.println("result = myIp");
+                }
                 return;
             }
             for (int i = info.fingerTable.length - 1; i >= 0; i--) {
                 if (Utils.insideInterval(Utils.sha1(info.myIp), sha1, Utils.sha1(info.fingerTable[i].getAddress()))
-                        && !Arrays.equals(info.myIp, info.fingerTable[i].getAddress())) {
+                        && !Arrays.equals(info.myIp, info.fingerTable[i].getAddress()) && Utils.sha1(info.myIp) != sha1) {
+                    if (Settings.DEBUG) {
+                        System.err.println("asked for help from " + Utils.ipToString(info.fingerTable[i].getAddress()));
+                    }
                     InetAddress res = Utils.sendFindSuccessorRequest(info.fingerTable[i], sha1);
                     if (res == null) {
                         output.write(Codes.FAIL);
@@ -77,7 +86,9 @@ public class TcpReceiver implements Runnable {
                     }
                     output.write(Codes.OK);
                     output.write(res.getAddress());
-                    System.err.println("result  = " + Utils.ipToString(res.getAddress()));
+                    if (Settings.DEBUG) {
+                        System.err.println("result  = " + Utils.ipToString(res.getAddress()));
+                    }
                     return;
                 }
             }
@@ -92,30 +103,33 @@ public class TcpReceiver implements Runnable {
             }
             output.write(Codes.OK);
             output.write(res.getAddress());
-            System.err.println("result = " + Utils.ipToString(res.getAddress()));
+            if (Settings.DEBUG) {
+                System.err.println("result = " + Utils.ipToString(res.getAddress()));
+            }
             return;
         }
 
         private void gotPickUp(InputStream stream) throws IOException {
 //            System.err.println("GOT PICK UP MESSAGE");
             InetAddress askAddress = Utils.readIPFromStream(stream);
-            System.err.println("from ip = " + Utils.ipToString(askAddress.getAddress()));
+            if (Settings.DEBUG) {
+                System.err.println("from ip = " + Utils.ipToString(askAddress.getAddress()));
+            }
             info.succ = Utils.sendFindSuccessorRequest(askAddress, Utils.sha1(info.myIp)).getAddress();
             info.succ2 = Utils.sendFindSuccessorRequest(askAddress, Utils.sha1(info.succ)).getAddress();
             if (Arrays.equals(info.succ, info.succ2)) {
                 info.succ2 = info.myIp;
             }
             info.fingerTable[0] = InetAddress.getByAddress(info.succ);
-//            System.err.println("received pickup");
-//            System.err.println("succ ip = " + Utils.ipToString(info.succ));
-//            System.err.println("succ2 ip = " + Utils.ipToString(info.succ2));
         }
 
         private void gotNotify(InputStream stream) throws IOException {
             byte[] ip = Utils.readIPFromStream(stream).getAddress();
             if (Utils.insideInterval(Utils.sha1(info.prev), Utils.sha1(info.myIp), Utils.sha1(ip))) {
                 info.prev = ip;
-                System.err.println("got notify that my prev = " + Utils.ipToString(info.prev));
+                if (Settings.DEBUG) {
+                    System.err.println("got notify that my prev = " + Utils.ipToString(info.prev));
+                }
             }
         }
     }

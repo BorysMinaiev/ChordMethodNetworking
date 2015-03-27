@@ -45,7 +45,6 @@ public class Utils {
     }
 
     public static InetAddress sendFindSuccessorRequest(InetAddress addr, int sha1) throws IOException {
-//        System.err.println("ask succ for sha1 = " + sha1);
         Socket sendSocket = new Socket(addr, Settings.PORT);
         OutputStream out = sendSocket.getOutputStream();
         out.write(Codes.FIND_SUCCESSOR);
@@ -56,12 +55,10 @@ public class Utils {
         InputStream input = sendSocket.getInputStream();
         int res = input.read();
         if (res != Codes.OK) {
-//            System.err.println("failed to get succ");
             return null;
         }
         InetAddress result = Utils.readIPFromStream(input);
         sendSocket.close();
-//        System.err.println("send result -> " + Utils.ipToString(result.getAddress()));
         return result;
     }
 
@@ -78,7 +75,9 @@ public class Utils {
     }
 
     public static void sendNotify(InetAddress addr, Info info) throws IOException {
-        System.err.println("send notify to = " + ipToString(addr.getAddress()));
+        if (Settings.DEBUG) {
+            System.err.println("send notify to = " + ipToString(addr.getAddress()));
+        }
         Socket sendSocket = new Socket(addr, Settings.PORT);
         OutputStream out = sendSocket.getOutputStream();
         out.write(Codes.NOTIFY);

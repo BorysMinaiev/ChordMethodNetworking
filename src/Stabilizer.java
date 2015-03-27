@@ -1,10 +1,12 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.Set;
 
 /**
  * Created by Borys Minaiev on 27.03.2015.
@@ -17,7 +19,9 @@ public class Stabilizer implements Runnable {
     }
 
     private InetAddress sendPrevRequest(InetAddress addr) throws IOException {
-        System.err.println("ask prev for ip = " + Utils.ipToString(addr.getAddress()));
+        if (Settings.DEBUG) {
+            System.err.println("ask prev for ip = " + Utils.ipToString(addr.getAddress()));
+        }
         Socket sendSocket = new Socket(addr, Settings.PORT);
         OutputStream out = sendSocket.getOutputStream();
         out.write(Codes.GET_PREDECESSOR);
@@ -25,40 +29,47 @@ public class Stabilizer implements Runnable {
         InputStream input = sendSocket.getInputStream();
         int res = input.read();
         if (res != Codes.OK) {
-            System.err.println("failed to get prev");
+            if (Settings.DEBUG) {
+                System.err.println("failed to get prev");
+            }
             return null;
         }
         InetAddress result = Utils.readIPFromStream(input);
         sendSocket.close();
-        System.err.println("got prev = " + Utils.ipToString(result.getAddress()));
+        if (Settings.DEBUG) {
+            System.err.println("got prev = " + Utils.ipToString(result.getAddress()));
+        }
         return result;
     }
 
     @Override
     public void run() {
         while (true) {
-            System.err.println("CURRENT INFO:");
-            System.err.println("myIp = " + Utils.ipToString(info.myIp));
-            System.err.println("succ = " + Utils.ipToString(info.succ));
-            System.err.println("succ2 = " + Utils.ipToString(info.succ2));
-            System.err.println("prev = " + Utils.ipToString(info.prev));
-
 
             if (!Arrays.equals(info.fingerTable[0].getAddress(), info.myIp)) {
                 InetAddress x = null;
-                System.err.println("!!!%%%");
                 try {
-                    System.err.println("try to send prev req " + info.fingerTable[0]);
-                    x = sendPrevRequest(info.fingerTable[0]);
-                    System.err.println("resp = prev = " + Utils.ipToString(x.getAddress()));
+                    if (Settings.DEBUG) {
+                        System.err.println("try to send prev req " + info.fingerTable[0]);
+                    }
+                    try {
+                        x = sendPrevRequest(info.fingerTable[0]);
+                    } catch (ConnectException e) {
+                        if (Settings.DEBUG) {
+                            System.err.print("failed to connect, try to connect to succ2");
+                        }
+                        info.succ = info.succ2;
+                        info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
+                    }
                     if (Utils.insideInterval(Utils.sha1(info.myIp), Utils.sha1(info.succ), Utils.sha1(x.getAddress())) && !Arrays.equals(info.myIp, x.getAddress())) {
-                        System.err.println("!!!");
                         info.fingerTable[0] = x;
                         info.succ = x.getAddress();
-                        System.err.println(" in stabilizer " + Utils.ipToString(info.succ));
-                        System.err.println("ask for succ");
+                        try {
+                            Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                         info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
-                        System.err.println("received response");
                         Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
                     }
                 } catch (IOException e) {
@@ -72,11 +83,17 @@ public class Stabilizer implements Runnable {
                     e.printStackTrace();
                 }
             }
-            System.err.println("12312321");
+
+            if (!Arrays.equals(info.myIp, info.succ)) {
+                try {
+                    info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
             try {
-                System.err.println("!!!");
                 Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
-                System.err.println("???");
             } catch (IOException e) {
                 e.printStackTrace();
             }

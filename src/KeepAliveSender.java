@@ -29,10 +29,12 @@ public class KeepAliveSender implements Runnable {
                 e2.printStackTrace();
             }
             try {
-                System.err.println("send keep alive");
+                if (Settings.DEBUG) {
+                    System.err.println("send keep alive");
+                }
                 socket.send(packet);
             } catch (IOException e1) {
-                System.out.println("error sending a message");
+
             }
             try {
                 Thread.sleep(Settings.SEND_INTERVAL);

@@ -16,7 +16,9 @@ public class KeepAliveChecker implements Runnable {
     public void run() {
         while (true) {
             if (System.currentTimeMillis() - info.lastTimeReceivedKeepAlive > Settings.KEEP_ALIVE_WAIT) {
-                System.err.println("SOMEBODY FAILED TO RESPOND!!!");
+                if (Settings.DEBUG) {
+                    System.err.println("SOMEBODY FAILED TO RESPOND!!!");
+                }
                 info.succ = info.succ2;
                 try {
                     info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
