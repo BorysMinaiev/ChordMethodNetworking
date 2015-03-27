@@ -44,7 +44,7 @@ public class UdpReceiver implements Runnable {
         if (sha1 == Utils.sha1(info.myIp)) {
             return;
         }
-        System.err.println("inits..");
+        System.err.println("inits.. from " + Utils.ipToString(ip));
         if (Utils.insideInterval(Utils.sha1(info.myIp), Utils.sha1(info.succ), sha1)) {
             if (Settings.DEBUG) {
                 System.err.println(" I ' M GOING TO SEND PICK UP TO " + Utils.ipToString(ip));

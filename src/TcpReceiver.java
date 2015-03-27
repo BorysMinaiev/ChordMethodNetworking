@@ -2,6 +2,7 @@ import javax.rmi.CORBA.Util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -43,7 +44,15 @@ public class TcpReceiver implements Runnable {
                     case Codes.GET_PREDECESSOR:
                         getPredecessor(output);
                         break;
-
+                    case Codes.ADD_ENTRY:
+                        addEntry(input, output);
+                        break;
+                    case Codes.GET_IP:
+                        getIP(input, output);
+                        break;
+                    case Codes.GET_DATA:
+                        getData(input, output);
+                        break;
                 }
                 socket.close();
             } catch (IOException e) {
@@ -96,7 +105,12 @@ public class TcpReceiver implements Runnable {
                 output.write(Codes.FAIL);
                 return;
             }
-            InetAddress res = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), sha1);
+            InetAddress res;
+            try {
+                res = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), sha1);
+            } catch (ConnectException e) {
+                res = null;
+            }
             if (res == null) {
                 output.write(Codes.FAIL);
                 return;
@@ -116,11 +130,48 @@ public class TcpReceiver implements Runnable {
                 System.err.println("from ip = " + Utils.ipToString(askAddress.getAddress()));
             }
             info.succ = Utils.sendFindSuccessorRequest(askAddress, Utils.sha1(info.myIp)).getAddress();
-            info.succ2 = Utils.sendFindSuccessorRequest(askAddress, Utils.sha1(info.succ)).getAddress();
+            if (info.succ == null) {
+                info.succ = info.myIp;
+            } else {
+                info.succ2 = Utils.sendFindSuccessorRequest(askAddress, Utils.sha1(info.succ)).getAddress();
+            }
             if (Arrays.equals(info.succ, info.succ2)) {
                 info.succ2 = info.myIp;
             }
             info.fingerTable[0] = InetAddress.getByAddress(info.succ);
+        }
+
+        private void addEntry(InputStream stream, OutputStream output) throws IOException {
+            int sha = Utils.readInt(stream);
+            if (info.whereMap.containsKey(sha)) {
+                output.write(Codes.FAIL); // TODO: CHANGE CODE
+                return;
+            }
+            info.whereMap.put(sha, Utils.readIp(stream));
+        }
+
+        private void getIP(InputStream stream, OutputStream output) throws IOException {
+            int sha = Utils.readInt(stream);
+            if (info.whereMap.containsKey(sha)) {
+                output.write(Codes.OK);
+                output.write(info.whereMap.get(sha));
+                return;
+            }
+            output.write(Codes.FAIL);
+        }
+
+
+        private void getData(InputStream stream, OutputStream output) throws IOException {
+            int sha = Utils.readInt(stream);
+            if (info.map.containsKey(sha)) {
+                output.write(Codes.OK);
+                output.write(info.map.get(sha).length());
+                for (char c : info.map.get(sha).toCharArray()) {
+                    output.write(c);
+                }
+                return;
+            }
+            output.write(Codes.FAIL);
         }
 
         private void gotNotify(InputStream stream) throws IOException {

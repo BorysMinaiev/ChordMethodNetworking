@@ -1,6 +1,7 @@
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.HashMap;
 
 /**
  * Created by Borys Minaiev on 26.03.2015.
@@ -12,9 +13,13 @@ public class Info {
     byte[] myIp;
     InetAddress[] fingerTable;
     int[] start;
+    HashMap<String, String> map;
+    HashMap<Integer, byte[]> whereMap;
     long lastTimeReceivedKeepAlive;
 
     Info() {
+        map = new HashMap<>();
+        whereMap = new HashMap<>();
         succ = succ2 = prev = myIp = Settings.myIP;
         fingerTable = new InetAddress[32];
         try {

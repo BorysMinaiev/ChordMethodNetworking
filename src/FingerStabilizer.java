@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -22,8 +23,16 @@ public class FingerStabilizer implements Runnable {
                 try {
                     info.fingerTable[pos] = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ),
                             info.start[pos]);
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    if (info.fingerTable[pos] == null) {
+                        info.fingerTable[pos] = InetAddress.getByAddress(info.succ);
+                    }
+                } catch (Exception e) {
+//                    e.printStackTrace();
+                    try {
+                        info.fingerTable[pos] = InetAddress.getByAddress(info.myIp);
+                    } catch (UnknownHostException e1) {
+                        e1.printStackTrace();
+                    }
                 }
             }
             try {

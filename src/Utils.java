@@ -52,6 +52,7 @@ public class Utils {
             int what = (sha1 >> ((3 - i) * 8)) & 255;
             out.write(what);
         }
+        out.flush();
         InputStream input = sendSocket.getInputStream();
         int res = input.read();
         if (res != Codes.OK) {
@@ -131,7 +132,7 @@ public class Utils {
         return sha1(addr.getAddress());
     }
 
-    int sha1(String s) {
+    static int sha1(String s) {
         try {
             return sha1(s.getBytes("UTF-8"));
         } catch (UnsupportedEncodingException e) {
@@ -140,17 +141,20 @@ public class Utils {
         return 0;
     }
 
-    public interface PacketGenerator {
-        void gen(DataOutputStream dos) throws IOException;
+    public static int readInt(InputStream stream) throws IOException {
+        int res = 0;
+        for (int i = 0; i < 4; i++) {
+            int tmp = stream.read();
+            res = (res << 8) | tmp;
+        }
+        return res;
     }
 
-    static DatagramPacket genPacket(PacketGenerator pg, InetAddress addr, int port) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        DataOutputStream dos = new DataOutputStream(bos);
-        pg.gen(dos);
-        byte[] bytes = bos.toByteArray();
-        DatagramPacket packet = new DatagramPacket(bytes,
-                bytes.length, addr, port);
-        return packet;
+    public static byte[] readIp(InputStream stream) throws  IOException {
+        byte[] res = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            res[i] = (byte) stream.read();
+        }
+        return res;
     }
 }

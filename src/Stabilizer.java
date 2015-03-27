@@ -60,6 +60,9 @@ public class Stabilizer implements Runnable {
                         }
                         info.succ = info.succ2;
                         info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
+                        if (info.succ2 == null) {
+                            info.succ2 = info.myIp;
+                        }
                     }
                     if (Utils.insideInterval(Utils.sha1(info.myIp), Utils.sha1(info.succ), Utils.sha1(x.getAddress())) && !Arrays.equals(info.myIp, x.getAddress())) {
                         info.fingerTable[0] = x;
@@ -70,6 +73,9 @@ public class Stabilizer implements Runnable {
                             e.printStackTrace();
                         }
                         info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
+                        if (info.succ2 == null) {
+                            info.succ2 = info.myIp;
+                        }
                         Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
                     }
                 } catch (IOException e) {
@@ -87,15 +93,18 @@ public class Stabilizer implements Runnable {
             if (!Arrays.equals(info.myIp, info.succ)) {
                 try {
                     info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (Exception e) {
+//                    e.printStackTrace();
+                }
+                if (info.succ2 == null) {
+                    info.succ2 = info.myIp;
                 }
             }
 
             try {
                 Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+//                e.printStackTrace();
             }
             try {
                 Thread.sleep(Settings.SEND_INTERVAL);

@@ -22,15 +22,18 @@ public class KeepAliveChecker implements Runnable {
                 info.succ = info.succ2;
                 try {
                     info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (Exception e) {
+//                    e.printStackTrace();
+                }
+                if (info.succ2 == null) {
+                    info.succ2 = info.myIp;
                 }
                 try {
                     Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                } catch (Exception e) {
+//                    e.printStackTrace();
                 }
             }
             try {
