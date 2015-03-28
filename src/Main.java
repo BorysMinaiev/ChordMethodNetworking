@@ -72,6 +72,10 @@ public class Main {
             System.err.println("find pos for hash = " + hash);
             InetAddress address = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.myIp), hash);
             System.err.println("ip locatins in " + address);
+            if (address == null) {
+                System.err.println("can't load");
+                return null;
+            }
             InetAddress position = sendGetIPRequest(address, hash);
             System.err.println("real data locates in " + position);
             if (position == null) {

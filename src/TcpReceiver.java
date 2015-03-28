@@ -86,13 +86,21 @@ public class TcpReceiver implements Runnable {
                 output.write(Codes.OK);
                 output.write(info.myIp);
 //                if (Settings.DEBUG) {
-                    System.err.println("result for " +  sha1 + " is  = myIp");
+//                    System.err.println("result for " +  sha1 + " is  = myIp");
 //                }
+                if (Utils.sha1(info.myIp) == sha1) {
+                    System.err.println(":(");
+                }
                 return;
             }
-            for (int i = info.fingerTable.length - 1; i >= 0; i--) {
+//            for (int i = info.fingerTable.length - 1; i >= 0; i--) {
+               for (int i = 0; i >= 0; i--) {
                 if (Utils.insideInterval(Utils.sha1(info.myIp), sha1, Utils.sha1(info.fingerTable[i].getAddress()))
                         && !Arrays.equals(info.myIp, info.fingerTable[i].getAddress()) && Utils.sha1(info.myIp) != sha1) {
+                    if (Utils.sha1(info.fingerTable[0].getAddress()) != Utils.sha1(info.succ)) {
+                        System.err.println("!");
+                        info.fingerTable[0] = InetAddress.getByAddress(info.succ);
+                    }
                     if (Settings.DEBUG) {
                         System.err.println("asked for help from " + Utils.ipToString(info.fingerTable[i].getAddress()));
                     }
