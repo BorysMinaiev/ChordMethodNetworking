@@ -1,10 +1,7 @@
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.ConnectException;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.util.Arrays;
 import java.util.Set;
 
@@ -54,12 +51,13 @@ public class Stabilizer implements Runnable {
                     }
                     try {
                         x = sendPrevRequest(info.fingerTable[0]);
-                    } catch (ConnectException e) {
+                    } catch (SocketException e) {
                         if (Settings.DEBUG) {
                             System.err.print("failed to connect, try to connect to succ2");
                         }
                         info.succ = info.succ2;
-                        info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
+                        InetAddress tmp =Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ));
+                        info.succ2 = tmp == null ? null : tmp.getAddress();
                         if (info.succ2 == null) {
                             info.succ2 = info.myIp;
                         }
@@ -79,7 +77,9 @@ public class Stabilizer implements Runnable {
                         Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+//                    e.printStackTrace();
+                } catch (NullPointerException e) {
+
                 }
             } else {
                 info.succ = info.prev;

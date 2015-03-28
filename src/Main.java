@@ -5,6 +5,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Scanner;
 
 /**
@@ -67,8 +69,15 @@ public class Main {
     private static String getValueForEntry(String entry) {
         int hash = Utils.sha1(entry);
         try {
+            System.err.println("find pos for hash = " + hash);
             InetAddress address = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.myIp), hash);
+            System.err.println("ip locatins in " + address);
             InetAddress position = sendGetIPRequest(address, hash);
+            System.err.println("real data locates in " + position);
+            if (position == null) {
+                return null;
+            }
+            System.err.println(Utils.ipToString(position.getAddress()));
             String value = sendGetDataRequest(position, hash);
             return value;
         } catch (IOException e) {
@@ -77,34 +86,13 @@ public class Main {
         return null;
     }
 
-    private static boolean sendDataToSomeone(InetAddress address, int sha1) throws IOException {
-        if (address == null) {
-            return false;
-        }
-        Socket sendSocket = new Socket(address, Settings.PORT);
-        OutputStream out = sendSocket.getOutputStream();
-        out.write(Codes.ADD_ENTRY);
-        for (int i = 0; i < 4; i++) {
-            int what = (sha1 >> ((3 - i) * 8)) & 255;
-            out.write(what);
-        }
-        out.write(info.myIp);
-        out.flush();
-        InputStream input = sendSocket.getInputStream();
-        int res = input.read();
-        sendSocket.close();
-        if (res != Codes.OK) {
-            return false;
-        }
-        return true;
-    }
 
-    private static boolean putData(String entry, String value) {
-        info.map.put(entry, value);
-        int hash = Utils.sha1(entry);
+
+    private static boolean putData(int sha1, String value) {
+        info.map.put(sha1, value);
         try {
-            InetAddress address = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.myIp), hash);
-            return sendDataToSomeone(address, hash);
+            InetAddress address = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.myIp), sha1);
+            return Utils.sendDataToSomeone(address, sha1, info.myIp);
         } catch (IOException e) {
             e.printStackTrace();
             return false;
@@ -132,17 +120,17 @@ public class Main {
             System.out.println("get_entry ENTRY_NAME");
             while (true) {
                 String cmd = scanner.next();
-                if (cmd.equals("add_entry")) {
+                if (cmd.startsWith("a")) {
                     String entry = scanner.next();
                     String value = scanner.next();
                     String currentValue = getValueForEntry(entry);
                     if (currentValue == null) {
-                        System.out.println("put " + (putData(entry, value) ? " ok" : " not ok"));
+                        System.out.println("put " + (putData(Utils.sha1(entry), value) ? " ok" : " not ok"));
                     } else {
                         System.out.println("failed to put, already exist, sorry.");
                     }
                 } else {
-                    if (cmd.equals("get_entry")) {
+                    if (cmd.startsWith("g")) {
                         String entry = scanner.next();
                         String value = getValueForEntry(entry);
                         if (value == null) {
@@ -151,12 +139,29 @@ public class Main {
                             System.out.println("value = " + value);
                         }
                     } else {
-                        System.out.println("COMMAND NOT FOUND");
+                        if (cmd.startsWith("e")) {
+                            exit();
+                        } else {
+                            System.out.println("COMMAND NOT FOUND");
+                        }
                     }
                 }
             }
         } catch (SocketException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void exit() {
+        for (Map.Entry<Integer, byte[]> entry : info.whereMap.entrySet()) {
+            if (!Arrays.equals(info.myIp, info.succ)) {
+                try {
+                    Utils.sendDataToSomeone(InetAddress.getByAddress(info.succ), entry.getKey(), entry.getValue());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                };
+            }
+         }
+        System.exit(0);
     }
 }

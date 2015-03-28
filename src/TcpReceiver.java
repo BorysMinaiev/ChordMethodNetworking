@@ -1,12 +1,10 @@
-import javax.rmi.CORBA.Util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.ConnectException;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
 
 /**
  * Created by Borys Minaiev on 26.03.2015.
@@ -53,16 +51,26 @@ public class TcpReceiver implements Runnable {
                     case Codes.GET_DATA:
                         getData(input, output);
                         break;
+                    case Codes.PRED_FAILED:
+                        predFailed(input, output);
+                        break;
+                    case Codes.ADD_TO_BACKUP:
+                        addToBackUp(input, output);
+                        break;
                 }
                 socket.close();
             } catch (IOException e) {
-                e.printStackTrace();
+//                e.printStackTrace();
             }
         }
 
         private void getPredecessor(OutputStream output) throws IOException {
             output.write(Codes.OK);
             output.write(info.prev);
+        }
+
+        private void addToBackUp(InputStream input, OutputStream output) throws IOException {
+            output.write(Codes.OK);
         }
 
 
@@ -77,9 +85,9 @@ public class TcpReceiver implements Runnable {
             if (Utils.insideInterval(Utils.sha1(info.prev), Utils.sha1(info.myIp), sha1)) {
                 output.write(Codes.OK);
                 output.write(info.myIp);
-                if (Settings.DEBUG) {
-                    System.err.println("result = myIp");
-                }
+//                if (Settings.DEBUG) {
+                    System.err.println("result for " +  sha1 + " is  = myIp");
+//                }
                 return;
             }
             for (int i = info.fingerTable.length - 1; i >= 0; i--) {
@@ -148,6 +156,13 @@ public class TcpReceiver implements Runnable {
                 return;
             }
             info.whereMap.put(sha, Utils.readIp(stream));
+            output.write(Codes.OK);
+        }
+
+        private void predFailed(InputStream stream, OutputStream output) throws IOException {
+            System.err.println("pred failed");
+            byte[] ips = Utils.readIPFromStream(stream).getAddress();
+            info.prev = ips;
         }
 
         private void getIP(InputStream stream, OutputStream output) throws IOException {
@@ -165,7 +180,7 @@ public class TcpReceiver implements Runnable {
             int sha = Utils.readInt(stream);
             if (info.map.containsKey(sha)) {
                 output.write(Codes.OK);
-                output.write(info.map.get(sha).length());
+                Utils.writeInt(output, info.map.get(sha).length());
                 for (char c : info.map.get(sha).toCharArray()) {
                     output.write(c);
                 }
@@ -180,6 +195,21 @@ public class TcpReceiver implements Runnable {
                 info.prev = ip;
                 if (Settings.DEBUG) {
                     System.err.println("got notify that my prev = " + Utils.ipToString(info.prev));
+                }
+                HashSet<Integer> toRemove = new HashSet<>();
+                for (Map.Entry<Integer, byte[]> entry : info.whereMap.entrySet()) {
+                    // prev in [entry, myIp)
+                    if (Utils.insideInterval(entry.getKey(), Utils.sha1(info.myIp), Utils.sha1(info.prev))) {
+                        System.err.println("want remove " + entry.getKey());
+                        if (Utils.sendDataToSomeone(InetAddress.getByAddress(info.prev), entry.getKey(), entry.getValue())) {
+                            toRemove.add(entry.getKey());
+                        } else {
+                            System.err.println("failed to submit data to " + Utils.ipToString(info.prev));
+                        }
+                    }
+                }
+                for (int entry : toRemove) {
+                    info.whereMap.remove(entry);
                 }
             }
         }

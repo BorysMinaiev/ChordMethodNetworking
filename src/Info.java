@@ -13,7 +13,7 @@ public class Info {
     byte[] myIp;
     InetAddress[] fingerTable;
     int[] start;
-    HashMap<String, String> map;
+    HashMap<Integer, String> map;
     HashMap<Integer, byte[]> whereMap;
     long lastTimeReceivedKeepAlive;
 

@@ -16,9 +16,9 @@ public class KeepAliveChecker implements Runnable {
     public void run() {
         while (true) {
             if (System.currentTimeMillis() - info.lastTimeReceivedKeepAlive > Settings.KEEP_ALIVE_WAIT) {
-                if (Settings.DEBUG) {
-                    System.err.println("SOMEBODY FAILED TO RESPOND!!!");
-                }
+//                if (Settings.DEBUG) {
+                    System.err.println("SOMEBODY FAILED TO RESPOND!!! " + Utils.ipToString(info.succ));
+//                }
                 info.succ = info.succ2;
                 try {
                     info.succ2 = Utils.sendFindSuccessorRequest(InetAddress.getByAddress(info.succ), Utils.sha1(info.succ)).getAddress();
@@ -29,7 +29,7 @@ public class KeepAliveChecker implements Runnable {
                     info.succ2 = info.myIp;
                 }
                 try {
-                    Utils.sendNotify(InetAddress.getByAddress(info.succ), info);
+                    Utils.sendPredFail(InetAddress.getByAddress(info.succ), info);
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
                 } catch (Exception e) {

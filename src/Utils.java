@@ -5,12 +5,14 @@ import java.io.*;
 import java.net.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Enumeration;
 
 public class Utils {
     static byte[] getIpAddress() {
         try {
-//            System.out.println("Host addr: " + InetAddress.getLocalHost().getHostAddress());  // often returns "127.0.0.1"
+            System.out.println("Host addr: " + InetAddress.getLocalHost().getHostAddress());  // often returns "127.0.0.1"
+//            return Inet4Address.getLocalHost().getAddress();
             Enumeration<NetworkInterface> n = NetworkInterface.getNetworkInterfaces();
             for (; n.hasMoreElements();)
             {
@@ -20,7 +22,7 @@ public class Utils {
                 for (; a.hasMoreElements();)
                 {
                     InetAddress addr = a.nextElement();
-//                    System.out.println("  " + addr.getHostAddress() + " " + Arrays.toString(addr.getAddress()));
+                    System.out.println("  " + addr.getHostAddress() + " " + Arrays.toString(addr.getAddress()));
                     if (e.getName().equals("net6"))
                         if (addr instanceof Inet4Address) {
                             Inet4Address cur = (Inet4Address) addr;
@@ -28,8 +30,8 @@ public class Utils {
                         }
                 }
             }
-//        } catch (UnknownHostException e) {
-//            e.printStackTrace();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -89,12 +91,48 @@ public class Utils {
     }
 
 
+    public static void sendPredFail(InetAddress addr, Info info) throws IOException {
+        if (Settings.DEBUG) {
+            System.err.println("send notify to = " + ipToString(addr.getAddress()));
+        }
+        Socket sendSocket = new Socket(addr, Settings.PORT);
+        OutputStream out = sendSocket.getOutputStream();
+        out.write(Codes.PRED_FAILED);
+        for (int i = 0; i < info.myIp.length; i++) {
+            out.write(info.myIp[i]);
+        }
+        sendSocket.close();
+    }
+
+
     // is value in [from; to) ?
     public static boolean insideInterval(int from, int to, int value) {
         if (from < to) {
             return value >= from && value < to;
         }
         return value >= from || value < to;
+    }
+
+    public static boolean sendDataToSomeone(InetAddress address, int sha1, byte[] ip) throws IOException {
+        if (address == null) {
+            return false;
+        }
+        Socket sendSocket = new Socket(address, Settings.PORT);
+        OutputStream out = sendSocket.getOutputStream();
+        out.write(Codes.ADD_ENTRY);
+        for (int i = 0; i < 4; i++) {
+            int what = (sha1 >> ((3 - i) * 8)) & 255;
+            out.write(what);
+        }
+        out.write(ip);
+        out.flush();
+        InputStream input = sendSocket.getInputStream();
+        int res = input.read();
+        sendSocket.close();
+        if (res != Codes.OK) {
+            return false;
+        }
+        return true;
     }
 
     static String ipToString(byte[] ip) {
@@ -156,5 +194,12 @@ public class Utils {
             res[i] = (byte) stream.read();
         }
         return res;
+    }
+
+    public static void writeInt(OutputStream output, int value) throws IOException {
+        for (int i = 0; i < 4; i++) {
+            int wr = (value >> ((3 - i) * 8)) & 255;
+            output.write(wr);
+        }
     }
 }
